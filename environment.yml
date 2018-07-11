@@ -1,0 +1,9 @@
+name: mildly-intelligent-parking-assist
+dependencies:
+  - python=2
+  - ipykernel
+  - numpy
+  - opencv
+  - matplotlib
+  - pip:
+    - pandacan
