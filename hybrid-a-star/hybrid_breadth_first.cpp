@@ -22,7 +22,7 @@ HBF::CarState::CarState(double x, double y, double theta, unsigned int iteration
 }
 
 std::vector<double> HBF::create_expansion_thetas(double const expansion_dist, CarInfo const & car_info) {
-    std::vector<double> expansion_thetas{0};
+    std::vector<double> expansion_thetas{0}; // Push zero.
 
     size_t num_more_points = 7;
     double max_steering = atan2(car_info.wheelbase, car_info.turning_radius); // bicycle model
@@ -32,7 +32,7 @@ std::vector<double> HBF::create_expansion_thetas(double const expansion_dist, Ca
         double abs_steering = steering_interval * i;
         for (int direction : {1, -1}) {
             double steering = abs_steering * direction;
-            double change_in_theta = expansion_dist / car_info.wheelbase * tan(steering);
+            double change_in_theta = expansion_dist / car_info.wheelbase * tan(steering); // bicycle model
             expansion_thetas.push_back(change_in_theta);
         }
     }
@@ -51,9 +51,9 @@ size_t HBF::dist_to_idx(double dist) {
 
 double HBF::heuristic(CarState const & state, CarState const & goal) {
     // TODO maybe penalize switching between forward/backward.
-    return pow(state.x - goal.x, 2) +
-           pow(state.y - goal.y, 2) +
-           pow(state.theta - goal.theta, 2);
+    return sqrt(pow(state.x - goal.x, 2) +
+                pow(state.y - goal.y, 2)) +
+           (state.theta - goal.theta);
 }
 
 bool HBF::are_car_states_in_same_bucket(CarState const & left, CarState const & right) {
@@ -69,9 +69,9 @@ bool HBF::is_within_bounds(CarState const & state) {
 }
 
 bool HBF::does_car_collide_w_obstacle(CarState const &state) {
-    auto eval_one_corner = [&state, this](double const & angle) {
-        double x = state.x + ego_diagonal_dist * cos(angle);
-        double y = state.y + ego_diagonal_dist * sin(angle);
+    auto eval_one_corner = [&state, this](double dx, double dy) {
+        double x = state.x + dx;
+        double y = state.y + dy;
 
         double x_idx = dist_to_idx(x);
         double y_idx = dist_to_idx(y);
@@ -86,10 +86,15 @@ bool HBF::does_car_collide_w_obstacle(CarState const &state) {
         // Also note, the obstacles grid uses (y, x) indexing.
         return is_corner_inside_grid && obstacles_grid[y_idx][x_idx];
     };
-    return eval_one_corner(state.theta - ego_diagonal_angle) ||
-            eval_one_corner(state.theta + ego_diagonal_angle) ||
-            eval_one_corner(-state.theta - ego_diagonal_angle) ||
-            eval_one_corner(-state.theta + ego_diagonal_angle);
+    auto eval_one_diagonal = [&eval_one_corner, this](double const & angle) {
+        double dx = ego_diagonal_dist * cos(angle);
+        double dy = ego_diagonal_dist * sin(angle);
+
+        return eval_one_corner(dx, dy) &&
+                eval_one_corner(-dx, -dy);
+    };
+    return eval_one_diagonal(state.theta - ego_diagonal_angle) ||
+            eval_one_diagonal(state.theta + ego_diagonal_angle);
 }
 
 HBF::HBF(std::vector<std::vector<bool>> const & obst_grid, double expansion_dist, CarInfo const & car_info) :
@@ -174,11 +179,6 @@ std::vector<HBF::CarState> HBF::search(CarState const & start, CarState const & 
                 continue;
             }
 
-            if (does_car_collide_w_obstacle(next_st)) {
-                // At least one corner of ego collides with an obstacle.
-                continue;
-            }
-
             // Note, the obstacles grid uses (y, x) indexing.
             if (obstacles_grid[next_st.y_idx][next_st.x_idx] ||
                 discrete_state_came_from[next_st.x_idx][next_st.y_idx][next_st.theta_idx] != nullptr) {
@@ -186,7 +186,14 @@ std::vector<HBF::CarState> HBF::search(CarState const & start, CarState const & 
                 continue;
             }
 
-            open_continuous_states.push_back(next_st);
+            if (! does_car_collide_w_obstacle(next_st)) {
+                // Iff not in collision, add to "open" states.
+                open_continuous_states.push_back(next_st);
+            }
+
+            // Always make a "came from" mapping, regardless of collision.
+            // If next_st is in collision, the mapping is effectively a tombstone. The eventual reverse traversal from
+            // the goal will never come across next_st, and tombstone prevents redundant evaluations later.
             discrete_state_came_from[next_st.x_idx][next_st.y_idx][next_st.theta_idx] = std::make_shared<CarState>(curr_st);
         }
     }

@@ -37,7 +37,6 @@ int main(int argc, char* argv[]) {
     car_info.width              = std::strtod(argv[11], nullptr);
 
     std::vector<std::vector<bool>> grid;
-
     std::ifstream grid_file(grid_file_name);
     for (std::string line; std::getline(grid_file, line); ) {
         if (line.empty()) {

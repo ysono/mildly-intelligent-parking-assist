@@ -30,7 +30,6 @@ Shoutout to [Udacity](https://www.udacity.com/course/self-driving-car-engineer-n
 - Convert this prototype into a mobile app.
 - Make use of proximity sensors, and localize using sensor fusion. (My car doesn't have those sensors.) Currently it uses a forward-pointing camera only.
 - Run path generation live. This requires sensor fusion. Take dynamic obstacles (other cars) into consideration.
-- The collision avoidance logic in the hybrid-A* is not properly taking ego vehicle's dimension into account.
 - Offer multiple choices of destinations: different spots and reverse front/rear orientation.
 - Run line detection, to offer suggestion for annotation of parking spots.
 - Somehow take ground tilt into account.

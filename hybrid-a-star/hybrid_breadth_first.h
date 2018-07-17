@@ -36,7 +36,7 @@ public:
 
 private:
 
-    static const size_t NUM_ORIENTATION_BUCKETS = 90;
+    static const size_t NUM_ORIENTATION_BUCKETS = 180;
 
     static std::vector<double> create_expansion_thetas(double expansion_dist, CarInfo const & car_info);
 
